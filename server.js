@@ -8,17 +8,30 @@ const {shuffleArray} = require('./utils')
 app.use(express.json())
 app.use(express.static('public'))
 // app.use(cors())
-app.use(express.static(path.join(__dirname, 'public')))
+
+// include and initialize the rollbar library with your access token
+var Rollbar = require('rollbar')
+var rollbar = new Rollbar({
+  accessToken: '04a018114b7c49138fb0f8534849ba33',
+  captureUncaught: true,
+  captureUnhandledRejections: true,
+})
+
+// record a generic message and send it to Rollbar
+rollbar.log('Hello world!')
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/index.html'))
+    res.sendFile(path.join(__dirname, './public/index.html'))
+    rollbar.log('The home page was requested for Duel Duo')
 })
 
 app.get('/api/robots', (req, res) => {
     try {
         res.status(200).send(bots)
+        rollbar.log('All robots were pulled up on the Duel Duo home page.')
         //botsArr changed to bots because of the name of the variable on line 4 and where we are getting it from
     } catch (error) {
+        rollbar.critical(`Someone tried getting bots, but were unsuccessful ${error}`)
         console.log('ERROR GETTING BOTS', error)
         res.sendStatus(400)
     }
@@ -30,7 +43,9 @@ app.get('/api/robots/five', (req, res) => {
         let choices = shuffled.slice(0, 5)
         let compDuo = shuffled.slice(6, 8)
         res.status(200).send({choices, compDuo})
+        rollbar.log('5 bots were randomly selected.')
     } catch (error) {
+        rollbar.error(`Someone tried to "draw" 5 random bots, but were unable ${error}`)
         console.log('ERROR GETTING FIVE BOTS', error)
         res.sendStatus(400)
     }
@@ -58,10 +73,12 @@ app.post('/api/duel', (req, res) => {
             playerRecord.losses++
             res.status(200).send('You lost!')
         } else {
-            playerRecord.losses++
+            playerRecord.wins++
+            //changed losses to wins to count wins properly
             res.status(200).send('You won!')
         }
     } catch (error) {
+        rollbar.warning(`An error occured when someone tried to duel ${error}`)
         console.log('ERROR DUELING', error)
         res.sendStatus(400)
     }
